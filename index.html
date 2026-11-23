@@ -187,6 +187,30 @@
       .quizfoot{min-height:0;padding:9px 24px}
       .exam-timer{margin:10px 0 11px;padding:9px 12px}
     }
+
+    /* ===== Mode gelap: kartu soal & jawaban dibuat nyaman di mata ===== */
+    [data-theme=dark] .quiz{background:#1a2a2b}
+    [data-theme=dark] .quizhead{border-bottom-color:#2f4546}
+    [data-theme=dark] .quizfoot{background:#152223;border-top-color:#2f4546}
+    [data-theme=dark] .prompt{color:#f3eee2}
+    [data-theme=dark] .sub{color:#b3beb8}
+    [data-theme=dark] .passage{background:#132020;border-color:#304748;color:#dfe6e0}
+    [data-theme=dark] .option{background:#2c4445;border-color:#4d6869;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+    [data-theme=dark] .option .otext{color:#f2f5f0}
+    [data-theme=dark] .option:hover:not(:disabled){background:#345352;border-color:#86b9aa}
+    [data-theme=dark] .quiz .okey{background:#7b4b61;color:#fff6f9;box-shadow:none}
+    [data-theme=dark] .option:disabled{opacity:1;cursor:default}
+    [data-theme=dark] .option:disabled:not(.correct):not(.wrong){opacity:.68}
+    [data-theme=dark] .option.correct{background:#1f4b3b;border-color:#5fb68e}
+    [data-theme=dark] .option.correct .okey{background:#267a55;color:#fff}
+    [data-theme=dark] .option.wrong{background:#4b2b2b;border-color:#d27a70}
+    [data-theme=dark] .option.wrong .okey{background:#b4493f;color:#fff}
+    [data-theme=dark] .feedback{color:#eef1ec}
+    [data-theme=dark] .feedback.good .fmark{background:#267a55;color:#fff;box-shadow:none}
+    [data-theme=dark] .feedback.bad .fmark{background:#b4493f;color:#fff;box-shadow:none}
+    [data-theme=dark] .feedback.good{background:#1c3b30;border-color:#4a9a77}
+    [data-theme=dark] .feedback.bad{background:#3c2727;border-color:#b9645b}
+    [data-theme=dark] .feedback .ftext,[data-theme=dark] .feedback .extra{color:#dfe5df}
   </style>
 </head>
 <body>
