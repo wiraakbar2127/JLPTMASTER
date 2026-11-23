@@ -155,7 +155,7 @@
     @media(max-width:620px){.memo-actions{width:100%}.memo-actions .btn{flex:1 1 100%}.memo-card{padding:16px 15px;border-radius:17px}.memo-card .prompt{font-size:17px}.memo-otext{font-size:16px}.memo-tools .btn{width:100%}}
 
     /* ===== Halaman soal padat: soal pendek muat satu layar, soal panjang boleh di-scroll ===== */
-    @media(max-width:900px){
+    @media(max-width:1100px){
       .quizview.active{display:flex;flex-direction:column;gap:8px;height:auto;min-height:100dvh;padding:8px 0 10px}
       .quizview.active .side{order:0;margin:0;display:block;width:100%;min-width:0}.quizview.active .side .full{width:100%;box-sizing:border-box}
       .quizview.active .side .optional{display:none}
@@ -167,7 +167,7 @@
       .side .exam-timer span{display:none}
       .side .exam-timer strong{font-size:18px;line-height:1.2}
       .side .track{grid-area:bar;margin:0;height:6px}
-      .quizview.active .quiz{order:1;min-height:0;flex:1 1 auto}
+      .quizview.active .quiz{order:1;min-height:0;flex:1 1 auto;width:100%;max-width:none;box-sizing:border-box;grid-column:auto}
       .quizhead{padding:10px 14px}
       .quizbody{padding:14px 14px 12px}
       .quizbody .prompt{margin:8px 0 12px;font-size:clamp(18px,5vw,23px);line-height:1.5}
@@ -177,7 +177,7 @@
       .quizbody .otext{font-size:16px;line-height:1.4}
       .quizfoot{min-height:0;padding:9px 12px}
     }
-    @media(min-width:901px) and (max-height:760px){
+    @media(min-width:1101px) and (max-height:760px){
       .quizview.active{padding-top:12px}
       .quizview.active .quiz{min-height:0}
       .quizhead{padding:12px 24px 10px}
