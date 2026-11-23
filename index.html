@@ -153,6 +153,40 @@
     .memo-card.show .memo-opt.correct .memo-key,.reveal-all .memo-opt.correct .memo-key{background:var(--green);color:#fff}
     .memo-toggle{margin-top:14px}.reveal-all .memo-toggle{display:none}
     @media(max-width:620px){.memo-actions{width:100%}.memo-actions .btn{flex:1 1 100%}.memo-card{padding:16px 15px;border-radius:17px}.memo-card .prompt{font-size:17px}.memo-otext{font-size:16px}.memo-tools .btn{width:100%}}
+
+    /* ===== Halaman soal padat: soal pendek muat satu layar, soal panjang boleh di-scroll ===== */
+    @media(max-width:900px){
+      .quizview.active{display:flex;flex-direction:column;gap:8px;height:auto;min-height:100dvh;padding:8px 0 10px}
+      .quizview.active .side{order:0;margin:0;display:block;width:100%;min-width:0}.quizview.active .side .full{width:100%;box-sizing:border-box}
+      .quizview.active .side .optional{display:none}
+      .quizview.active .side .full{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"back title timer" "bar bar bar";align-items:center;gap:7px 10px;padding:9px 12px;border-radius:15px}
+      .side #exitQuiz{grid-area:back;margin:0;min-height:34px;padding:0 13px;font-size:12px;width:auto}
+      .side .pack-title{grid-area:title;margin:0;font-size:15px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .side .pack-sub,.side .progresscopy{display:none}
+      .side .exam-timer{grid-area:timer;margin:0;padding:5px 11px;border-radius:12px;gap:0}
+      .side .exam-timer span{display:none}
+      .side .exam-timer strong{font-size:18px;line-height:1.2}
+      .side .track{grid-area:bar;margin:0;height:6px}
+      .quizview.active .quiz{order:1;min-height:0;flex:1 1 auto}
+      .quizhead{padding:10px 14px}
+      .quizbody{padding:14px 14px 12px}
+      .quizbody .prompt{margin:8px 0 12px;font-size:clamp(18px,5vw,23px);line-height:1.5}
+      .quizbody .options{gap:7px}
+      .quizbody .option{min-height:52px;padding:8px 12px}
+      .quizbody .okey{width:34px;height:34px;font-size:13px}
+      .quizbody .otext{font-size:16px;line-height:1.4}
+      .quizfoot{min-height:0;padding:9px 12px}
+    }
+    @media(min-width:901px) and (max-height:760px){
+      .quizview.active{padding-top:12px}
+      .quizview.active .quiz{min-height:0}
+      .quizhead{padding:12px 24px 10px}
+      .quizbody{padding:16px 28px}
+      .quizbody .prompt{margin:8px 0 14px}
+      .quizbody .option{min-height:56px}
+      .quizfoot{min-height:0;padding:9px 24px}
+      .exam-timer{margin:10px 0 11px;padding:9px 12px}
+    }
   </style>
 </head>
 <body>
@@ -315,14 +349,20 @@
       try{vocab=await buildVocab(items,m=>{btn.textContent="⏳ "+m;notify(m)})}
       catch(e){btn.disabled=false;btn.textContent=label;notify("Gagal memproses kotoba: "+(e.message||e)+". Pastikan internet aktif lalu coba lagi");return}
       btn.disabled=false;btn.textContent=label;
-      const fmtWord=w=>{const k=String(w.kata??"").trim(),b=String(w.baca??"").trim(),a=String(w.arti??"").trim();return`${k}${b&&b!==k?` (${b})`:""} = ${a}`},
-        rows=items.map(({q},idx)=>{const v=vocab.get(idx+1);return[idx+1,q.prompt||"",v?v.filter(w=>w&&w.kata).map(fmtWord).join("\n"):"(gagal diproses, coba unduh ulang)"]}),
-        head=["No","Kalimat","List Kotoba"],widths=[6,55,70],
+      const lines=[],merges=[];
+      items.forEach(({q},idx)=>{
+        const v=vocab.get(idx+1),ws=v?v.filter(w=>w&&w.kata):[],start=lines.length+2,
+          list=v?(ws.length?ws:[{kata:"",baca:"",arti:""}]):[{kata:"(gagal diproses, coba unduh ulang)",baca:"",arti:""}];
+        list.forEach((w,k)=>lines.push({shade:idx%2,v:[k===0?idx+1:"",k===0?(q.prompt||""):"",w.kata||"",w.baca&&w.baca!==w.kata?w.baca:"",w.arti||""]}));
+        if(list.length>1)merges.push(`A${start}:A${start+list.length-1}`,`B${start}:B${start+list.length-1}`)
+      });
+      const rows=lines,
+        head=["No","Kalimat","Kotoba","Furigana","Arti"],widths=[6,48,16,16,32],
         cell=(r,c,v,s)=>typeof v==="number"?`<c r="${xlsxCol(c)}${r}" s="${s}"><v>${v}</v></c>`:`<c r="${xlsxCol(c)}${r}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xlsxEsc(v)}</t></is></c>`,
         lastCol=xlsxCol(head.length-1),
-        sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${lastCol}${rows.length+1}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("")}</cols><sheetData><row r="1" ht="24" customHeight="1">${head.map((h,c)=>cell(1,c,h,1)).join("")}</row>${rows.map((r,i)=>`<row r="${i+2}">${r.map((v,c)=>cell(i+2,c,v,2)).join("")}</row>`).join("")}</sheetData><pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/></worksheet>`,
+        sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${lastCol}${rows.length+1}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("")}</cols><sheetData><row r="1" ht="24" customHeight="1">${head.map((h,c)=>cell(1,c,h,1)).join("")}</row>${rows.map((r,i)=>`<row r="${i+2}">${r.v.map((v,c)=>cell(i+2,c,v,r.shade?(c<2?5:4):(c<2?3:2))).join("")}</row>`).join("")}</sheetData>${merges.length?`<mergeCells count="${merges.length}">${merges.map(m=>`<mergeCell ref="${m}"/>`).join("")}</mergeCells>`:""}<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/></worksheet>`,
         X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-        styles=`${X}<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2F7D6D"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFBFC8C4"/></left><right style="thin"><color rgb="FFBFC8C4"/></right><top style="thin"><color rgb="FFBFC8C4"/></top><bottom style="thin"><color rgb="FFBFC8C4"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`,
+        styles=`${X}<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2F7D6D"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEEF6F3"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFBFC8C4"/></left><right style="thin"><color rgb="FFBFC8C4"/></right><top style="thin"><color rgb="FFBFC8C4"/></top><bottom style="thin"><color rgb="FFBFC8C4"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`,
         files=[
           {name:"[Content_Types].xml",data:`${X}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`},
           {name:"_rels/.rels",data:`${X}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
@@ -334,7 +374,7 @@
         pad=n=>String(n).padStart(2,"0"),d=new Date(),name=`memo-kotoba-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.xlsx`,
         url=URL.createObjectURL(xlsxZip(files)),a=document.createElement("a");
       a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-      notify(`✓ ${rows.length} soal diunduh ke Excel`)
+      notify(`✓ ${items.length} soal diunduh ke Excel`)
     }
     const memoUI={level:"ALL",reveal:false}
     function memoCard({pack,q}){const sec=sectionName(q.section),opts=q.options.map((o,i)=>{const x=opt(o),body=x.image?`<img src="${esc(x.image)}" alt="Pilihan ${i+1}">${x.text?`<div>${renderMarked(x.text,x.underlines)}</div>`:""}`:renderMarked(x.text,x.underlines);return`<div class="memo-opt ${i===q.correctIndex?"correct":""}"><span class="memo-key">${i+1}</span><div class="memo-otext">${body}</div></div>`}).join(""),ans=opt(q.options[q.correctIndex]).text||`Pilihan ${q.correctIndex+1}`;return`<article class="memo-card" data-pid="${esc(pack.id)}" data-qid="${esc(q.id)}"><div class="memo-meta"><span class="chip red">${esc(pack.level)}</span><span class="chip green">${sec.label} • ${sec.jp}</span><span class="chip">${esc(pack.title)} • No. ${esc(q.number)}</span><button class="memo-unstar" data-unstar title="Hapus dari Memo" aria-label="Hapus dari Memo">★</button></div>${q.context?`<details class="memo-context"><summary>Lihat bacaan / konteks</summary><div class="passage">${renderMarked(q.context,q.contextUnderlines)}</div></details>`:""}<div class="prompt">${renderPrompt(q)}</div>${q.instruction?`<div class="sub">${esc(q.instruction)}</div>`:""}${q.image?`<img class="qimage" src="${esc(q.image)}" alt="Ilustrasi soal">`:""}<div class="memo-more"><div class="memo-more-inner"><div class="memo-options">${opts}</div><div class="memo-answer"><div class="answer">Jawaban yang benar: ${renderMarked(ans,[])}</div>${q.explanation?`<p class="ftext">${esc(q.explanation)}</p>`:""}${q.translation?`<div class="extra"><b>Arti:</b> ${esc(q.translation)}</div>`:""}</div><button class="btn memo-toggle" data-toggle>Lihat jawaban</button></div></div><button class="memo-handle" data-handle aria-expanded="false" aria-label="Tarik ke bawah untuk melihat pilihan jawaban"><span class="grip"></span><span class="hint">Tarik ke bawah untuk lihat pilihan</span></button></article>`}
