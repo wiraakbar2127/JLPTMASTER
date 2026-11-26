@@ -385,13 +385,8 @@
         const sw=sentenceWords(tok,q.prompt||""),seen=new Set(sw.map(w=>w.kata)),readings=new Set(sw.map(w=>w.baca)),ow=[];
         q.options.forEach(o=>{const t=opt(o).text.trim();if(!t||seen.has(t)||readings.has(t))return;seen.add(t);ow.push({kata:t,baca:hasKanji(t)?readingOf(tok,t):"",opsi:true})});
         return{sw,ow}
-      }),words=[...new Set(plan.flatMap(p=>[...p.sw,...p.ow].map(w=>w.kata)))],res=new Map(),need=[];words.forEach(w=>{if(artiCache[w])res.set(w,artiCache[w]);else need.push(w)});const batches=[];for(let i=0;i<need.length;i+=30)batches.push(need.slice(i,i+30));let done=words.length-need.length,next=0;
-      const worker=async()=>{while(next<batches.length){const b=batches[next++],out=await translateBatch(b);for(let i=0;i<b.length;i++)res.set(b[i],out?out[i]:await translateWord(b[i]));done+=b.length;say(`Mencari arti ${done}/${words.length}…`)}};
-      await Promise.all(Array.from({length:8},worker));
-      try{localStorage.setItem(ARTI_CACHE_KEY,JSON.stringify(artiCache))}catch{}
-      if(words.length&&[...res.values()].every(v=>!v))throw new Error("tidak bisa terhubung ke layanan arti (Google Translate)");
-      const out=new Map();
-      plan.forEach((p,i)=>out.set(i+1,[...p.sw.map(w=>({...w,arti:res.get(w.kata)?.arti||"(arti belum tersedia)"})),...p.ow.filter(w=>{const r=res.get(w.kata);return r&&!r.nonsense}).map(w=>({...w,arti:res.get(w.kata).arti}))]));
+      });
+      const out=new Map();plan.forEach((p,i)=>out.set(i+1,[...p.sw,...p.ow]));
       return out
     }
     function askExport(){
@@ -400,7 +395,7 @@
       state.confirm={kind:"export"};
       $("confirmTitle").textContent="Download Excel";
       $("confirmSub").textContent="Hasil memo berbintang";
-      $("confirmCopy").textContent=`${n} soal berbintang akan diubah menjadi file Excel (kolom: No, Kalimat, List Kotoba). Prosesnya butuh internet dan bisa memakan waktu beberapa saat. Lanjutkan?`;
+      $("confirmCopy").textContent=`${n} soal berbintang akan diubah menjadi file Excel (kolom: No, Kalimat, Kotoba, Furigana). Kalimat dipotong per kata tanpa terjemahan. Lanjutkan?`;
       $("confirmAction").className="btn";$("confirmAction").textContent="Ya, download";
       openModal("confirmModal")
     }
@@ -410,17 +405,17 @@
       const label=btn.textContent;btn.disabled=true;
       let vocab;
       try{vocab=await buildVocab(items,m=>{btn.textContent="⏳ "+m;notify(m)})}
-      catch(e){btn.disabled=false;btn.textContent=label;notify("Gagal memproses kotoba: "+(e.message||e)+". Pastikan internet aktif lalu coba lagi");return}
+      catch(e){btn.disabled=false;btn.textContent=label;notify("Gagal memproses kotoba: "+(e.message||e)+". Pastikan internet aktif (untuk memuat kamus) lalu coba lagi");return}
       btn.disabled=false;btn.textContent=label;
       const lines=[],merges=[];
       items.forEach(({q},idx)=>{
         const v=vocab.get(idx+1),ws=v?v.filter(w=>w&&w.kata):[],start=lines.length+2,
           list=v?(ws.length?ws:[{kata:"",baca:"",arti:""}]):[{kata:"(gagal diproses, coba unduh ulang)",baca:"",arti:""}];
-        list.forEach((w,k)=>lines.push({shade:idx%2,v:[k===0?idx+1:"",k===0?(q.prompt||""):"",w.kata||"",w.baca&&w.baca!==w.kata?w.baca:"",w.arti||""]}));
+        list.forEach((w,k)=>lines.push({shade:idx%2,v:[k===0?idx+1:"",k===0?(q.prompt||""):"",w.kata||"",w.baca&&w.baca!==w.kata?w.baca:""]}));
         if(list.length>1)merges.push(`A${start}:A${start+list.length-1}`,`B${start}:B${start+list.length-1}`)
       });
       const rows=lines,
-        head=["No","Kalimat","Kotoba","Furigana","Arti"],widths=[6,48,16,16,32],
+        head=["No","Kalimat","Kotoba","Furigana"],widths=[6,48,18,18],
         cell=(r,c,v,s)=>typeof v==="number"?`<c r="${xlsxCol(c)}${r}" s="${s}"><v>${v}</v></c>`:`<c r="${xlsxCol(c)}${r}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xlsxEsc(v)}</t></is></c>`,
         lastCol=xlsxCol(head.length-1),
         sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${lastCol}${rows.length+1}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("")}</cols><sheetData><row r="1" ht="24" customHeight="1">${head.map((h,c)=>cell(1,c,h,1)).join("")}</row>${rows.map((r,i)=>`<row r="${i+2}">${r.v.map((v,c)=>cell(i+2,c,v,r.shade?(c<2?5:4):(c<2?3:2))).join("")}</row>`).join("")}</sheetData>${merges.length?`<mergeCells count="${merges.length}">${merges.map(m=>`<mergeCell ref="${m}"/>`).join("")}</mergeCells>`:""}<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/></worksheet>`,
