@@ -365,15 +365,29 @@
       }
       return null
     }
+    async function translateBatch(list){
+      for(let t=0;t<2;t++){
+        try{
+          const r=await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=id&dt=t&q="+encodeURIComponent(list.join("\n")));
+          if(!r.ok)throw new Error("HTTP "+r.status);
+          const d=await r.json(),lines=[""];
+          (Array.isArray(d?.[0])?d[0]:[]).forEach(g=>{if(g?.[0]==null&&g?.[1]==null)return;lines[lines.length-1]+=g[0]||"";if(/\n$/.test(g[1]||""))lines.push("")});
+          while(lines.length>list.length&&!lines[lines.length-1].trim())lines.pop();
+          if(lines.length!==list.length)throw new Error("batch tidak sejajar");
+          return list.map((w,i)=>{const arti=lines[i].trim();return artiCache[w]={arti,nonsense:!arti||arti===w}})
+        }catch(e){await new Promise(r=>setTimeout(r,400*(t+1)))}
+      }
+      return null
+    }
     async function buildVocab(items,say){
       say("Memuat kamus…");const tok=await getTokenizer();
       const plan=items.map(({q})=>{
         const sw=sentenceWords(tok,q.prompt||""),seen=new Set(sw.map(w=>w.kata)),readings=new Set(sw.map(w=>w.baca)),ow=[];
         q.options.forEach(o=>{const t=opt(o).text.trim();if(!t||seen.has(t)||readings.has(t))return;seen.add(t);ow.push({kata:t,baca:hasKanji(t)?readingOf(tok,t):"",opsi:true})});
         return{sw,ow}
-      }),words=[...new Set(plan.flatMap(p=>[...p.sw,...p.ow].map(w=>w.kata)))],res=new Map();let done=0,next=0;
-      const worker=async()=>{while(next<words.length){const w=words[next++];res.set(w,await translateWord(w));say(`Mencari arti ${++done}/${words.length}…`)}};
-      await Promise.all([worker(),worker(),worker(),worker()]);
+      }),words=[...new Set(plan.flatMap(p=>[...p.sw,...p.ow].map(w=>w.kata)))],res=new Map(),need=[];words.forEach(w=>{if(artiCache[w])res.set(w,artiCache[w]);else need.push(w)});const batches=[];for(let i=0;i<need.length;i+=30)batches.push(need.slice(i,i+30));let done=words.length-need.length,next=0;
+      const worker=async()=>{while(next<batches.length){const b=batches[next++],out=await translateBatch(b);for(let i=0;i<b.length;i++)res.set(b[i],out?out[i]:await translateWord(b[i]));done+=b.length;say(`Mencari arti ${done}/${words.length}…`)}};
+      await Promise.all(Array.from({length:8},worker));
       try{localStorage.setItem(ARTI_CACHE_KEY,JSON.stringify(artiCache))}catch{}
       if(words.length&&[...res.values()].every(v=>!v))throw new Error("tidak bisa terhubung ke layanan arti (Google Translate)");
       const out=new Map();
